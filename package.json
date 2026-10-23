@@ -1,0 +1,21 @@
+{
+  "name": "docspilot",
+  "private": true,
+  "description": "Multi-tenant AI support assistant (RAG over each tenant's own documents)",
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w apps/api",
+    "dev:worker": "npm run worker -w apps/api",
+    "dev:web": "npm run dev -w apps/web",
+    "migrate": "npm run migrate -w apps/api",
+    "typecheck": "npm run typecheck --workspaces",
+    "test": "npm run test -w apps/api",
+    "build": "npm run build --workspaces"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # Real Postgres + Redis, so integration tests exercise the same SQL as production.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: docspilot
+          POSTGRES_PASSWORD: docspilot
+          POSTGRES_DB: docspilot_test
+        ports: ["5433:5432"] # same host port as docker-compose.yml
+        options: >-
+          --health-cmd "pg_isready -U docspilot"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    env:
+      TEST_DATABASE_URL: postgres://docspilot:docspilot@localhost:5433/docspilot_test
+      TEST_REDIS_URL: redis://localhost:6379/1
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  # The production images must keep building (catches Dockerfile drift).
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker build -f apps/api/Dockerfile -t docspilot-api .
+      - run: docker build -f apps/web/Dockerfile --build-arg API_URL=http://api:4000 -t docspilot-web .

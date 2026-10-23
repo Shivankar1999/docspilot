@@ -1,0 +1,114 @@
+# The whole stack:            docker compose up --build      → http://localhost:3000
+# Only Postgres + Redis (dev): docker compose up -d postgres redis   (then npm run dev:*)
+# Settings come from .env (copy .env.example); keys default to the free mock providers.
+name: docspilot
+
+x-api-build: &api-build
+  context: .
+  dockerfile: apps/api/Dockerfile
+
+x-api-env: &api-env
+  NODE_ENV: production
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  DATABASE_URL: postgres://docspilot:docspilot@postgres:5432/docspilot
+  REDIS_URL: redis://redis:6379/0
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (copy .env.example to .env)}
+  EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-mock}
+  VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
+  VOYAGE_MODEL: ${VOYAGE_MODEL:-voyage-4}
+  LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  CHAT_MODEL: ${CHAT_MODEL:-claude-opus-5-5}
+  RATE_LIMIT_IP_PER_MIN: ${RATE_LIMIT_IP_PER_MIN:-20}
+  RATE_LIMIT_TENANT_PER_MIN: ${RATE_LIMIT_TENANT_PER_MIN:-120}
+  ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+
+services:
+  postgres:
+    # Official Postgres image with the pgvector extension preinstalled.
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: docspilot
+      POSTGRES_PASSWORD: docspilot
+      POSTGRES_DB: docspilot
+    # Host port 5433 so it never collides with a locally installed Postgres on 5432.
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docspilot -d docspilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    # BullMQ requires that Redis never evicts keys, or jobs could silently vanish.
+    # Cache entries always carry a TTL, so memory still gets reclaimed.
+    command: ["redis-server", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Runs once and exits; the API and worker start only after it succeeds.
+  migrate:
+    build: *api-build
+    image: docspilot-api
+    command: ["node", "dist/db/migrate-cli.js"]
+    environment: *api-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build: *api-build
+    image: docspilot-api
+    environment: *api-env
+    ports:
+      - "4000:4000" # /health and /metrics; browsers go through web
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  worker:
+    build: *api-build
+    image: docspilot-api
+    command: ["node", "dist/worker.js"]
+    # The image's HTTP health check is for the API; the worker serves no HTTP.
+    healthcheck:
+      disable: true
+    environment: *api-env
+    volumes:
+      - uploads:/data/uploads # same files the API saved
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        API_URL: http://api:4000
+    environment:
+      API_URL: http://api:4000
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  uploads:

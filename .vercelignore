@@ -1,0 +1,16 @@
+# Files `vercel deploy` must not upload: secrets, local build output and data.
+# Vercel installs dependencies and builds each service itself.
+**/node_modules
+**/dist
+**/.next
+**/coverage
+**/*.tsbuildinfo
+**/*.log
+.env
+.env.*
+apps/api/uploads
+docs
+# Coding-agent tooling (added by `vercel integration add`), not part of the app.
+.agents
+.claude
+skills-lock.json

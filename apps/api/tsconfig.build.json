@@ -1,0 +1,8 @@
+{
+  // Production build: only src/, emitted as dist/index.js, dist/worker.js, ...
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src"
+  },
+  "include": ["src"]
+}

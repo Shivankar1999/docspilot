@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    // Package has no "type": "module", so files compile to CommonJS:
+    // relative imports need no ".js" extension and __dirname just works.
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "types": ["node"],
+    "outDir": "dist"
+  },
+  "include": ["src", "test", "vitest.config.mts"]
+}

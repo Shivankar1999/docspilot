@@ -1,0 +1,13 @@
+# Keep the build context small and secret-free: images install their own deps.
+**/node_modules
+**/dist
+**/.next
+**/coverage
+**/*.tsbuildinfo
+**/*.log
+.git
+.github
+.env
+.env.*
+apps/api/uploads
+docs

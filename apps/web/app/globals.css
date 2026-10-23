@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+
+/* Chart tokens: charts reference roles, never raw hex. Categorical slots 1-3 of the
+   reference palette, validated against the white card surface (aqua is below 3:1,
+   so every chart ships a legend and the usage page a data table). */
+:root {
+  --chart-surface: #ffffff;
+  --chart-grid: #e1e0d9;
+  --chart-axis: #c3c2b7;
+  --chart-muted: #898781;
+  --chart-text: #52514e;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --status-warning: #fab219;
+  --status-critical: #d03b3b;
+}
